@@ -1,0 +1,34 @@
+---
+title: "Check in"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(here)
+
+colleges_clean <- read_csv(here::here('Week 5', 'colleges_clean.csv'))
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r college, echo=FALSE}
+colleges_clean <- colleges_clean %>% 
+  mutate(
+    CONTROL = factor(REGION),
+    Type = fct_recode(REGION,
+                      `0` = "Military", 
+                      `2` = "New England"
+                      `1` = "East"
+                      `3` = "Midwest"
+                )
+  
+  )
+
+summary(colleges_clean$REGION)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

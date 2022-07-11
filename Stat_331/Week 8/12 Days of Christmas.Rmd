@@ -1,0 +1,151 @@
+---
+title: "12 Days of Christmas PA"
+author: "Chau Nguyen"
+date: "2/23/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(glue)
+library(stringr)
+library(purrr)
+```
+
+### A Test Dataset
+
+Run the code below to load up a dataset called `xmas` that contains the crucial 
+information about the gifts in the song. We will use this dataset to test out
+our functions as we work on them.
+
+```{r}
+xmas <- read.csv("https://www.dropbox.com/s/e584pryn8evm1gz/xmas.csv?dl=1")
+```
+
+## Step One:  Plurals
+
+Note that the gifts are listed in singular: for example, on day five the
+narrator receives "five golden rings", but the entry in the dataset for the gift
+on day five simply says "ring".  
+
+Using the skeleton of the `pluralize_gift()` function, complete the code so that 
+the function takes a gift and returns the appropriate plural. 
+
+**Important:**  You should **absolutely not** "hard-code" anything into this 
+function; this function should work in general, not just for the items in the 12 
+Days of Christmas.  For example, the word "rings" should not appear anywhere in 
+the function.  I should be able to give it any gift and get back the plural of 
+that gift.
+
+```{r}
+# Function that takes a noun and makes it plural
+# Arguments -- gift -- A string or vector of strings
+# Return -- A string or vector of strings with the pluralized words
+ 
+pluralize_gift <- function(gift){
+gift <- case_when(str_detect(gift, 'y$') ~ 
+                  str_replace(gift, 'y$', 'ies'),
+                  str_detect(gift, 'oo') ~ 
+                  str_replace(gift, 'oo','ee'),
+                  TRUE ~ str_replace(gift, '$','s'))
+
+return(gift)
+
+}
+
+gift <- xmas$Gift.Item
+
+pluralize_gift(gift)
+
+```
+
+## Step Two: Creating sentences
+
+Write a function called `make_phrase` that takes as input the necessary information, 
+and returns a phrase.  For example, 
+
+
+
+```{r}
+make_phrase <- function(num, num_word, item, verb, adjective, location) {
+  
+  ## Step 1: Replace NAs with blank strings
+  verb <- str_replace_na(verb, replacement ='')
+  adjective <- str_replace_na(adjective, replacement = '')
+  location <- str_replace_na(location, replacement = '')
+  
+  ## Step 2: If the day is larger than 1, the items need pluralized! 
+  if(num != 1) {
+    item <- pluralize_gift(item)
+  }
+  
+  
+  ## Step 3: If the word starts with a vowel, add "an" to the beginning
+  if(num_word == "one") {
+    num_word <- str_replace(num_word, "one", "a")
+  }
+  
+  ## Step 4:" Glue all of the pieces together! 
+  str_squish(glue::glue("{num_word} {adjective} {item} {verb} {location}"))
+  
+}
+```
+
+```{r}
+xmas2 <- xmas %>%
+  mutate(day.num = as.character(english::english(Day)
+                                ), 
+    Full.Phrase = pmap_chr(
+      list(num = Day,
+           num_word = day.num,
+           item = Gift.Item,
+           verb = Verb,
+           adjective = Adjective,
+           location = Location),
+      make_phrase
+      )
+  )
+
+
+```
+
+
+### Challenge
+```{r}
+sing_line <- function(dataset, line, phrase_col) {
+  num_word <- dataset[line, 2]
+  intro <- glue::glue("On the {num_word} day of Christmas, my true love gave to me")
+  phrases <- dataset %>% 
+  pull({{phrase_col}})
+  phrases <- phrases[line:1]
+if(line != 1){
+    phrases <- str_replace(phrases, "a", "and a") 
+}
+  for(i in phrases[line]){
+    phrases[line:1]
+  }
+str_c(glue::glue("{phrases}"))
+print(intro, phrases)
+}
+```
+
+
+### A Small Test
+
+```{r}
+xmas2 %>% 
+sing_line(line = 2, phrase_col = Full.Phrase)
+```
+
+### A Larger Test
+
+```{r}
+map_chr(1:12, ~ sing_line(xmas2, .x, Full.Phrase)) %>%
+  str_c(collapse = "\n") %>% 
+  cat()
+
+```
+
+
+

@@ -1,0 +1,26 @@
+---
+title: "Check in"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(here)
+
+cereals_data <- read_csv(here::here('Week 4', 'cereal.csv'))
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r cereal, echo=FALSE}
+cereals_long <- cereals_data
+  pivot_longer(c('protein', 'fat', 'fiber'))
+    names_to = 'Nutrients',
+    values_to = 'Amount') %>% 
+  select(name, Nutrients, Amount)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

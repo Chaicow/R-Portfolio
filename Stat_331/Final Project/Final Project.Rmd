@@ -1,0 +1,226 @@
+---
+title: "Final Project"
+author: "Chau Nguyen"
+date: "3/2/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(here)
+library(broom)
+library(gridExtra)
+
+
+internet <- read_csv(here::here("Final Project",
+                                "non_net_users_prc.csv"))
+
+women_education <- read_csv(here::here("Final Project",          "mean_years_in_school_women_15_to_24_years.csv"))
+```
+
+## Data Cleaning
+__Introduction__ 
+For our final project, we wanted to explore the relationship between the percentage of non-internet users in a country and the mean number of years that women aged 15-24 in those countries spend in education. We wanted to evaluate this relationship because we wanted to know if the internet usage in a country could predict how many years young women in those countries spent in school. We felt that if the percentage of non internet users went down, the amount of years that women aged 15-24 would spend in school would also increase. This is because internet access makes educational information more accessible. We decided to evaluate women's education instead of men's education because we felt that the years that young women spend in their country's education system varies widely by country. This is because some countries value female education while others countries do not. We wanted to see if internet plays a role in increasing the number of years women spend in school even in countries that do not value educating women. 
+
+The data that we used in out project came from gapminder. Our data were originally two separate datasets. The first dataset that we used was called "Percentage of people not using internet".  This data in this dataset included data about the percentage of non-internet users in the population in 196 countries from the years 1989 through 2018. Additionally, the percentage of non-internet users was calculated by the proportion of people who did not use the internet in the past 3 months. The second dataset that we used was called "Mean years in school (women 15-14)". This dataset includes data from 188 countries about the mean number of years women aged 15-24 spent in primary, secondary, and post secondary education from the years 1969-2014. For our project, we combined the two datasets and the combined dataset had data from 188 countries across the years of 1989-2014.
+
+Our original dataset included years from 1989-2014. However, in our project, we decided to exclude every year before 2000. We did this because when we looked at our dataset, we noticed that before 2000, most countries had no internet users; the percentage of non-internet users in their populations were near or at 100%. Since we wanted to evaluate the effect of internet usage on the number of years that young women spent in school, we thought that it would be more accurate to test this during years where most countries had at least some access to the internet. Thus, for our project, we only evaluated the data from the years 2000-2014.
+ 
+ 
+ - Abstract
+
+
+- Data Set
+- Why we cut off data
+
+```{r pressure}
+internet_long <- internet %>% 
+  pivot_longer(`2000`:`2018`, 
+               names_to = "Year", 
+               values_to = "Percent of Non-Internet Users")
+
+women_education_long <- women_education %>% 
+  pivot_longer(`2000`:`2014`, 
+               names_to = "Year", 
+               values_to = "Mean Years in School") 
+
+education_internet <- left_join(internet_long, women_education_long, by = c("country", 
+                                                      "Year"))
+
+
+
+```
+
+__Linear model interpretation__
+The association between the percentage of non-internet users and the mean years that women aged 15-24 is moderate, negative and linear. The equation for the linear regression model is  \(\hat{y}=15.51-.085x\). This means that when the percent of non-internet users is 0, the estimated mean years that women aged 15-24 stay in school is 15.51 years. Additionally, when the percentage of non-internet users goes up by one percent, the average number of years that women aged 15-24 spend in education decreases by .085 years. 
+
+## Residual interpretations 
+As seen in the residual vs fitted plot, the linear model violates the equal variance condition. The residuals exhibit a funnel shaped pattern which indicates that as the variance of y changed as the x value increased. Additionally, there is a slight curve and bunching of data points on the left side evident in the residual vs fitted plot. Because the pattern of the residuals is not random, the linearity condition is violated. Since our linear model violates both the equal variance and linearity conditions, the linear model likely will not explain the relationship between the percentage of non-internet users and the years women aged 15-24 spend in education accurately. 
+```{r plot}
+education_internet %>% 
+  ggplot(mapping = aes(x = `Percent of Non-Internet Users`, y = `Mean Years in School`)) +
+  geom_point() + 
+  facet_wrap(~Year)
+
+
+education_internet_lm <- education_internet %>% 
+  lm(`Mean Years in School` ~ `Percent of Non-Internet Users`, data = .)
+
+education_internet_lm %>% 
+  augment() %>% 
+  ggplot(mapping = aes (x = .fitted, y = .resid)) +
+  geom_point()
+
+broom::glance(education_internet_lm)
+augment(education_internet_lm)
+
+broom::tidy(education_internet_lm)
+  
+```
+
+
+```{r, include=FALSE}
+education_internet <- education_internet %>% 
+  mutate(
+    Decade = case_when(Year %in% 2000:2009 ~ "2000s",
+                     Year %in% 2010:2018 ~ "2010s")
+  )
+
+```
+
+I am not colorblind, so I googled palettes that are accessible to those who cannot see certain colors. Here is the link: https://stackoverflow.com/questions/57153428/r-plot-color-combinations-that-are-colorblind-accessible
+
+I learned how to change the background color here: https://stackoverflow.com/questions/6736378/how-do-i-change-the-background-color-of-a-plot-made-with-ggplot2 
+
+I learned how to change the font here: https://stackoverflow.com/questions/34522732/changing-fonts-in-ggplot2#:~:text=To%20change%20all%20the%20fonts,sans
+```{r, message=FALSE, warning = FALSE}
+
+
+education_internet %>% 
+  ggplot(mapping = aes(x = `Percent of Non-Internet Users`, y = `Mean Years in School`, color = Decade)) +
+  geom_point()+
+  stat_smooth(method = "lm") +
+  scale_x_continuous(labels = function(x) paste0(x, "%"))+
+  theme(text = element_text(family = "Palatino"), legend.position =
+        "top", panel.background = element_rect(fill = "ivory")) 
+```
+```{r}
+education_internet_predict <- predict(education_internet_lm)
+
+education_sigma <- sigma(education_internet_lm)
+
+
+noise <- function(x, mean = 0, sd){
+  x + rnorm(length(x), 
+            mean, 
+            sd)
+}
+
+new_data <- tibble(predict_years = 
+                  noise(education_internet_predict,
+                  sd = education_sigma))
+
+pred <- new_data %>% 
+  ggplot(aes(x = predict_years)) +
+  geom_histogram() +
+  labs(x = "Simulated Mean Years in School") 
+
+obs <- education_internet %>% 
+  ggplot(aes(x = `Mean Years in School`)) + 
+  geom_histogram() + 
+  labs(x = "Mean Years in School") 
+
+
+gridExtra::grid.arrange(pred, obs, nrow = 1)
+
+
+```
+```{r}
+new_data <- education_internet %>% 
+  filter(!is.na(`Percent of Non-Internet Users`), 
+         !is.na(`Mean Years in School`)) %>% 
+  select(`Mean Years in School`, `Percent of Non-Internet Users`) %>% 
+  bind_cols(new_data)
+
+pred <- new_data %>% 
+  ggplot(aes(y = predict_years,
+             x = `Percent of Non-Internet Users`))+
+  geom_point()
+
+obs <- education_internet %>% 
+  ggplot(aes(y = `Mean Years in School`,
+             x = `Percent of Non-Internet Users`))+
+  geom_point()
+
+gridExtra::grid.arrange(obs, pred, nrow = 1)
+
+```
+
+
+```{r}
+new_data %>% 
+  ggplot(aes(x = predict_years, y = `Mean Years in School`)) + 
+  geom_point() + 
+   labs(x = "Observed Mean Years in School", 
+       y = "Simulated Non-Internet Users" ) + 
+  geom_abline(slope = 1,
+              intercept = 0, 
+              color = "red",
+              linetype = "dashed",
+              lwd = 1.5)
+```
+```{r, include=FALSE}
+new_data %>% 
+  lm(`Mean Years in School` ~ predict_years, data = .) %>% 
+  glance() 
+```
+
+```{r}
+new_data %>% 
+  lm(`Mean Years in School` ~ predict_years, data = .) %>% 
+  glance() %>% 
+  select(r.squared) %>% 
+  pull()
+```
+
+```{r, include = FALSE}
+nsims <- 1000
+
+sims <- map_dfc(1:nsims,
+                ~ tibble(sim = noise(education_internet_predict, sd = education_sigma)
+                         )
+                )
+```
+
+```{r, include = FALSE}
+colnames(sims) <- colnames(sims) %>% 
+  str_replace(pattern = "\\.\\.\\.",
+                  replace = "_")
+```
+
+```{r, include = FALSE}
+sims <- education_internet %>% 
+  filter(!is.na(`Percent of Non-Internet Users`), 
+         !is.na(`Mean Years in School`), 
+         !is.na(country)) %>% 
+  select(`Mean Years in School`) %>% 
+  bind_cols(sims)
+```
+
+```{r, include=FALSE, message=FALSE}
+sim_r_sq <- sims %>% 
+  map(~lm(`Mean Years in School` ~ .x, data = sims)) %>% 
+  map(glance) %>% 
+  map_dbl(~.$r.squared)
+```
+
+```{r}
+head(sim_r_sq)
+sim_r_sq <- sim_r_sq[names(sim_r_sq) != "Mean Years in School"]
+
+tibble(sims = sim_r_sq) %>% 
+  ggplot(aes(x = sims)) + 
+  geom_histogram(binwidth = 0.01)
+```
+

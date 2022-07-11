@@ -1,0 +1,119 @@
+---
+title: "Practice activity 2"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(stringr)
+
+message <- read_csv("https://www.dropbox.com/s/lgpn3vmksk3ssdo/scrambled_message.txt?dl=1") %>% 
+  pull(Word)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+1. How many characters are in the scrambled message?
+
+```{r practice activity warm up, echo = FALSE }
+sum(str_length(message))
+
+```
+
+
+2. How many words are in the scrambled message?
+
+There are 127 words in the scrambled message.
+
+```{r words, echo=FALSE}
+message
+
+```
+
+3. Print out every piece of a word in the scrambled message that starts with the letter “m”.
+```{r words m, echo=FALSE}
+str_subset(message, "^[m]")
+
+```
+Print out every piece of a word in the scrambled message that ends with the letter “z”
+```{r words z, echo=FALSE}
+str_subset(message, "[z]$")
+
+```
+
+Print out every punctuation symbol in the scrambled message.
+```{r words punctuation, echo=FALSE}
+str_subset(message, "[.,!?]")
+
+```
+Longest?
+"kaudevillianugh?aoghajdbn"
+
+Remove any spaces before or after each word.
+
+```{r remove whitespace, echo=FALSE}
+message <- message %>% 
+  str_trim(side = c("both", "left", "right"))
+```
+
+No word should be longer than 16 characters. Drop all extra characters off the end of each word.
+```{r remove 16+ character, echo=FALSE}
+message <- message %>% 
+str_trunc(15, side = c("right", "left",
+"center"), ellipsis = "...")
+message 
+
+```
+
+```{r remove punctuations, echo=FALSE}
+message <- message %>% 
+  str_remove_all("ugh+[:punct:]")
+message
+```
+
+```{r remove aa, echo=FALSE}
+message <- message %>% 
+  str_replace("aa", 'ee')
+
+
+```
+
+```{r remove z, echo=FALSE}
+message <- message %>% 
+  str_replace("z", 't')
+
+```
+
+```{r remove k, echo=FALSE}
+message <- message %>% 
+  str_replace("z", 't')
+message
+```
+
+
+```{r remove z, echo=FALSE}
+message <- message %>% 
+  str_replace_all('[b]$', 'y')
+
+message
+
+```
+```{r remove z, echo=FALSE}
+message <- message %>% 
+  str_replace_all("^[K]", "V")
+
+message <- message %>% 
+  str_replace_all("^[k]", "v")
+
+message
+
+```
+
+```{r remove k, echo=FALSE}
+str_c(message, collapse = " ")
+```

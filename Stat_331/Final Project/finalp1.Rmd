@@ -1,0 +1,427 @@
+---
+title: "Final Project: Part One"
+author: "Ken Xie"
+date: "3/2/2022"
+output:
+  prettydoc::html_pretty:
+    theme: cayman
+    highlight: github
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, 
+                      warning = FALSE,
+                      messages =  FALSE)
+
+library(tidyverse)
+library(gridExtra)
+library(broom)
+library(gganimate)
+library(gifski)
+```
+
+- Optional: Add percentages to x axis values?
+
+## Introduction
+- Abstract
+
+
+- Data Set
+- Why we cut off data
+
+<!-- The Data -->
+
+```{r, include = FALSE}
+non_internet <- read_csv(here::here("Final Project",
+                                "non_net_users_prc.csv"))
+
+women_edu <- read_csv(here::here("Final Project",          "mean_years_in_school_women_15_to_24_years.csv"))
+```
+
+<!-- Data Cleaning -->
+<!-- Pivoting Longer -->
+```{r, clean data, include = FALSE}
+non_internet_clean <- non_internet %>%
+  pivot_longer(cols = `1989`:`2018`, 
+               names_to = "year", 
+               values_to = "% non internet users")
+
+women_edu_clean <- women_edu %>%
+  pivot_longer(cols = `1969`:`2014`,
+               names_to = "year",
+               values_to = "mean edu years")
+```
+
+<!-- Data Cleaning + Joining Datasets -->
+```{r, include = FALSE}
+internet_edu <- full_join(women_edu_clean,
+                          non_internet_clean, 
+                          by = c("country","year")
+                          )
+
+internet_edu <- internet_edu %>%
+  filter(year > 1999) %>%
+  mutate(decade = case_when(year %in% 1980:1989 ~ "1980s",
+                            year %in% 1990:1999 ~ "1990s",
+                            year %in% 2000:2009 ~ "2000s",
+                            year %in% 2010:2019 ~ "2010s"),
+         year = as.numeric(year))
+```
+
+
+## Association of Percent of NON Internet Users and Mean Education Years for Women Ages 15-24
+<!-- Data Visualization -->
+
+<!-- Create two visualizations exploring the following: -->
+
+__1. The relationship between the two quantitative variables you are investigating.__
+It seems like there is a negative, medium linear association between the Percent of Non Internet Users in the World and Mean Educaiton Years for Women Ages 15-24, but this relationship becomes less clear as the Percent of Non Internet Users get closer to 100%. One could argue that this is true once the Percent of Non Internet Users is 85% or greater, but especially at 100%, since values there of Mean Education Years for Women Ages 15-24 essentially vary from 0 to 15 years (the entire spectrum).
+I included the years as a legend to make sure there was more variation in Percent of Non Internet Users with the same year rather than variation in Mean Education Years. This should be the case because variation in Percent of Non Internet Users just means there are differences in Percent of Non Internet Users among the different countries. However, it a country were to have the same Percent of Non Internet Users, they should not vary as much when it comes to the Mean Education Years of Women Ages 15-24.
+
+```{r, echo = FALSE}
+internet_edu %>% 
+  ggplot(mapping = aes(x = `% non internet users`, y = `mean edu years`, color = decade)) +
+  geom_point() +
+  stat_smooth(method = "lm") +
+  theme(legend.position = "top", text = element_text(family = "serif"))
+```
+
+<!-- Keep in mind your response should be on the y-axis and your explanatory variable should be on the x-axis. -->
+
+__2. How this relationship (from #1) has changed over time__
+It seems the Mean Education Years has increased over time while the Percent of Non Internet Users has decreased over time, though some countries stay as having basically 100% Non Internet Users throughout the years.
+One thing to notice is that Internet Usage may not be the only factor that has some effect on the Mean Education Years for Women 15-24 since even when the Percentage of Non Internet Users was at 100% and prior to when there was data on it, Mean Education Years from 1969 still increased regardless of the existence or decrease in Internet Usage.
+
+```{r, echo = FALSE}
+internet_edu %>%
+  ggplot(mapping = aes(x = `% non internet users`, y = `mean edu years`, color = year)) +
+  geom_point() +
+  labs(y = "Mean Education Years for Women Ages 15-24",
+       x = "Percent of NON Internet Users in the World") +
+  theme(title = element_text(size = 8, vjust = .9),
+        legend.position = "none") +
+  transition_time(year) +
+  labs(title = "Year: {round(frame_time, 0)}") +
+  shadow_wake(wake_length = 0.1, alpha = FALSE)
+```
+
+
+## Linear Regression and Residuals
+<!-- Linear Regression -->
+
+The response variable is the Mean Education Years for Women Ages 15-24 and the explanatory variable is the Percent of Non Internet Users. 
+
+
+```{r, include = FALSE}
+evals_lm <- internet_edu %>% 
+  lm(`mean edu years` ~ `% non internet users`, data = .)
+```
+
+```{r, echo = FALSE}
+evals_lm %>% 
+  augment() %>% 
+  ggplot(mapping = aes(y = .resid, x = .fitted)) +
+  geom_point() + 
+  labs(x = "Fitted", y ="Residual")
+```
+
+__Linear Regression and Residuals__
+
+
+Describe graph:
+
+__Model Fit__
+
+```{r, echo = FALSE}
+augment(evals_lm) 
+```
+Describe Table:
+
+```{r, echo = FALSE}
+augment(evals_lm) %>% 
+  summarize(var_y = var(`mean edu years`), 
+                      var_y_hat = var(`.fitted`), 
+                      var_residual = var(`.resid`)
+            )
+
+# ?get_regression_points
+# augment()
+# get_regression_table()
+# get_regression_summaries()
+```
+R^2 tells us the proportion of the variability in the response values that was accounted for by our regression model.
+The equation of R^2 is var(yhat)/var(y) and 0 <= R^2 <= 1.
+In this case the R^2 is 4.169/11.074 = 0.376459.
+This means our model explains 0.37 of the variation in mean education years.
+Thus the "quality" of our model is not amazing but also not completely useless.
+
+## Predict
+<!-- Predict -->
+
+```{r, include = FALSE}
+internet_edu_lm <- internet_edu %>% 
+  lm(`mean edu years` ~ `% non internet users`, data  = .)
+
+broom::tidy(internet_edu_lm)
+```
+
+```{r, include = FALSE}
+internet_edu_predict <- predict(internet_edu_lm)
+```
+
+```{r, include = FALSE}
+internet_edu_sigma <- sigma(internet_edu_lm)
+```
+
+```{r, include = FALSE}
+noise <- function(x, mean = 0, sd){
+  x + rnorm(length(x), 
+            mean, 
+            sd)
+}
+```
+
+```{r, include = FALSE}
+new_data <- tibble(predict_edu = noise(internet_edu_predict, 
+                                          sd = internet_edu_sigma
+                                          )
+                   )
+```
+
+```{r, echo = FALSE}
+pred <- new_data %>% 
+  ggplot(aes(x = predict_edu)) +
+  geom_histogram() +
+  labs(x = "Simulated Mean Edu Years")
+
+obs <- internet_edu %>% 
+  ggplot(aes(x = `mean edu years`)) + 
+  geom_histogram() + 
+  labs(x = "Observed Mean Edu Years")
+
+gridExtra::grid.arrange(pred, obs, nrow = 1)
+```
+Color: graph
+Describe: Simulated vs Observed
+
+```{r, include = FALSE}
+new_data <- internet_edu %>% 
+  filter(!is.na(`% non internet users`), 
+         !is.na(`mean edu years`)
+         ) %>% 
+  select(country, year, decade, `% non internet users`, `mean edu years`) %>% 
+  bind_cols(new_data)
+```
+
+```{r, echo = FALSE}
+pred <- new_data %>% 
+  ggplot(aes(y = predict_edu,
+             x = `% non internet users`)) + 
+  geom_point() + 
+   labs(title = "Simulated Data", 
+       x = "% Non Internet Users", 
+       y = "Mean Edu Years Women Ages 15-24" ) + 
+  theme(legend.position = "none")
+
+obs <- internet_edu %>% 
+  ggplot(aes(y = `mean edu years`,
+             x = `% non internet users`)) + 
+  geom_point() + 
+  labs(title = "Observed Data", 
+       x = "% Non Internet Users", 
+       y = "Mean Edu Years Women Ages 15-24" )
+
+gridExtra::grid.arrange(obs, pred, nrow = 1, widths = c(0.55, 0.45))
+```
+Describe: Data
+Color Graph or Animate
+
+```{r, echo = FALSE}
+new_data %>% 
+  ggplot(aes(x = predict_edu, y = `% non internet users`)) + 
+  geom_point() + 
+   labs(x = "Observed Mean Edu Years", 
+       y = "Simulated Non Internet Users" ) + 
+  geom_abline(slope = 1,
+              intercept = 0, 
+              color = "red",
+              linetype = "dashed",
+              lwd = 1.5)
+```
+- Color or Animate Graph
+- Describe Line and Plot Meaning
+
+```{r, echo = FALSE}
+new_data %>% 
+  lm(`mean edu years` ~ predict_edu, data = .) %>% 
+  glance() 
+```
+- Describe Table and Values
+- Make Table Look Nicer
+
+```{r, echo = FALSE}
+new_data %>% 
+  lm(`mean edu years` ~ predict_edu, data = .) %>% 
+  glance() %>% 
+  select(r.squared) %>% 
+  pull()
+```
+Explain what value means
+
+```{r, include = FALSE}
+nsims <- 1000
+
+sims <- map_dfc(1:nsims,
+                ~ tibble(sim = noise(internet_edu_predict, sd = internet_edu_sigma)
+                        )
+                )
+```
+
+```{r, include = FALSE}
+colnames(sims) <- colnames(sims) %>% 
+  str_replace(pattern = "\\.\\.\\.",
+                  replace = "_")
+```
+
+```{r, include = FALSE}
+sims <- internet_edu %>% 
+  filter(!is.na(`% non internet users`), 
+         !is.na(`mean edu years`), 
+         !is.na(country)) %>% 
+  select(`mean edu years`) %>% 
+  bind_cols(sims)
+```
+
+
+```{r, include = FALSE}
+sim_r_sq <- sims %>% 
+  map(~lm(`mean edu years` ~ .x, data = sims)) %>% 
+  map(glance) %>% 
+  map_dbl(~.$r.squared)
+```
+
+```{r, include = FALSE}
+sim_r_sq <- sim_r_sq[names(sim_r_sq) != "mean edu years"]
+```
+
+```{r}
+tibble(sims = sim_r_sq) %>% 
+  ggplot(aes(x = sims)) + 
+  geom_histogram(binwidth = 0.01)
+```
+- Animate or visualize
+- Explain meaning
+
+<!-- Scratch/Draft work -->
+
+```{r, draft1, include = FALSE}
+# START
+# internet_edu %>%
+#   ggplot(mapping = aes(x = `% non internet users`, y = `mean edu years`, color = year)) +
+#   # geom_point() +
+#   geom_point() +
+#   labs(y = "Mean Education Years for Women Ages 15-24",
+#        x = "Percent of NON Internet Users in the World") +
+#   theme(title = element_text(size = 8, vjust = .9),
+#         legend.position = "none") +
+#   transition_time(year) +
+#   # transition_reveal(year) +
+#   labs(title = "Year: {round(frame_time, 0)}") +
+#   # labs(title = "Year: {round(frame_along, 0)}") +
+#   # scale_color_viridis_d() +
+#   shadow_wake(wake_length = 0.1, alpha = FALSE)
+# END
+
+# + 
+#   geom_text(aes(label = year))
+
+# Sample
+# internet_edu %>%
+#   ggplot(mapping = aes(x = `% non internet users`, y = `mean edu years`, color = year)) +
+#   # geom_point() +
+#   geom_point() +
+#   labs(y = "Mean Education Years for Women Ages 15-24",
+#        x = "Percent of NON Internet Users in the World") +
+#   theme(title = element_text(size = 8, vjust = .9),
+#         legend.position = "none") +
+#   # transition_time(year) +
+#   # labs(title = "Year: {round(frame_time, 0)}") +
+#   # labs(title = "Year: {round(frame_along, 0)}") +
+#   # scale_color_viridis_d() +
+#   shadow_wake(wake_length = 0.1, alpha = FALSE) + 
+#   geom_text(aes(x = min(`% non internet users`), y = min(`mean edu years`), label = as.factor(year)) , hjust=-2, vjust = -0.2, alpha = 0.2,  col = "white", size = 20) + 
+#   transition_states(as.factor(year), state_length = 0)
+# Sample END
+
+  # transition_states(
+  #   year,
+  #   transition_length = 2,
+  #   state_length = 1
+  # ) +
+  # enter_fade() + 
+  # exit_shrink() +
+  # ease_aes('sine-in-out')
+```
+
+```{r, draft2, include = FALSE}
+# Extr Troll Graph: Years as Points
+# internet_edu %>%
+#   ggplot(mapping = aes(x = `% non internet users`, y = `mean edu years`, color = year)) + 
+#   # geom_point() + 
+#   geom_point() +
+#   labs(y = "Mean Education Years for Women Ages 15-24", 
+#        x = "Percent of NON Internet Users in the World", 
+#        title = "Percent of Non Internet Users in the World \n vs. \nMean Education Years for Women Ages 15-24") + 
+#   theme(title = element_text(size = 8, vjust = .9),
+#         legend.position = "none") + 
+#   transition_time(year) +
+#   # transition_reveal(year) + 
+#   labs(caption = "Year: {round(frame_time, 0)}") +
+#   # labs(title = "Year: {round(frame_along, 0)}") +
+#   # scale_color_viridis_d() +
+#   shadow_wake(wake_length = 0.1, alpha = FALSE) + 
+#   geom_text(aes(label = year))
+
+  # transition_states(
+  #   year,
+  #   transition_length = 2,
+  #   state_length = 1
+  # ) +
+  # enter_fade() + 
+  # exit_shrink() +
+  # ease_aes('sine-in-out')
+
+```
+
+```{r, draft3, echo = FALSE}
+# p1 <- internet_edu %>%
+#   ggplot(mapping = aes(x = year, y = `mean edu years`)) +
+#   geom_point() + 
+#   labs(x = "Years", y = "Mean Education Years for Women Ages 15-24") +
+#   scale_x_discrete(guide = guide_axis(n.dodge=2)) +
+#   theme(axis.text.x = element_text(size = 5, vjust = .9),
+#         axis.title.y = element_text(size = 5, hjust = .9))
+# 
+# 
+# p2 <- internet_edu %>%
+#   ggplot(mapping = aes(x = year, y = `% non internet users`)) +
+#   geom_point() +
+#   labs(x = "Years", y = "Percent of Non Internet Users in the World") + 
+#   scale_x_discrete(guide = guide_axis(n.dodge=2)) +
+#   theme(axis.text.x = element_text(size = 5, vjust = .9),
+#         axis.title.y = element_text(size = 5, hjust = .9))
+# 
+# grid.arrange(arrangeGrob(p1, p2, nrow=2))
+```
+
+```{r, draft4, include = FALSE}
+# grafico <- internet_edu %>%
+#   ggplot() + 
+#     geom_point(aes(x = `% non internet users`, y = `mean edu years`, col = year, size = year), alpha = 0.8) + theme_minimal() + 
+#     theme(legend.position = "bottom") + guides(size = "none") + 
+#     labs(x = "% Non Internet Users" ,y = "Mean Edu Years",  col = "") 
+# 
+# grafico +
+#   geom_text(aes(x = min(`% non internet users`), y = min(`mean edu years`), label = as.factor(year)) , hjust=10, vjust = -0.2, alpha = 0.2,  col = "gray", size = 20) +
+#   transition_states(as.factor(year), state_length = 0)
+```

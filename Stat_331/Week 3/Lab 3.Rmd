@@ -1,0 +1,177 @@
+---
+title: "Lab 3"
+author: "Chau Nguyen, Amrit Pradhan, Vishaal Guru, and Lamitr Dhir"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,
+                      message = FALSE)
+library(tidyverse)
+library(here)
+library(readxl)
+library(ggridges)
+
+hiphop <- read_csv(here::here('Week 3', 'hiphop.csv'))
+```
+
+## Summary
+
+```{r hiphop}
+glimpse(hiphop)
+```
+
+1. Provide a brief overview (2-4 sentences) of the dataset. (It is always good practice to start an analysis by getting a feel for the data and providing a quick summary for readers.) You do not need to show any source code for this question, although you probably want to use code to get information.
+
+The dataset has 10,752 rows and 38 columns. There are 4 variables that are characters and 34 variables that are doubles. This data comes from a study with 168 participants that investigated different factors, including demographic information, contributing to a person's knowledge about African American English (AAE). Each participants' familiarity with AAE was measured using a Likert scale with 1 being not familiar at all and 5 being very familiar.
+
+2. What are the rows of this dataset? It is not one person per row!
+
+Each row represents a word or phrase in AAE judged by each participant. Each word or phrase appears 168 times since there were 168 participants in the study.
+
+3. Missing values for some of the variables were replaced with other values. How were missing values replaced? What do you believe are some benefits and drawbacks of doing this?
+
+Missing values were replaced with the mean values of the corresponding variable. A benefit of doing this is that there won't be any rows with missing values that we have to deal with. A drawback of this is that the data that is being replaced isn't real data that was actually collected. It was made up data. This can have an affect on the study's validity.
+
+
+# Data Cleaning
+4.
+Clean the dataset in whichever ways you see fit. This might mean adjusting variable type, for example from character to factor, or dealing with missing data.
+
+We learned how to use the replace_na() function from this website:
+https://towardsdatascience.com/data-cleaning-with-r-and-the-tidyverse-detecting-missing-values-ea23c519bc62
+```{r data cleaning}
+hiphop_clean <- hiphop %>% 
+  select(hiphop, word : popularityScore)
+
+hiphop_clean <- hiphop %>% 
+mutate(
+    word = as.factor(word),
+    sex = as.factor(sex),
+    ethnic = as.factor(ethnic),
+    numPreferredArtists = replace_na(numPreferredArtists, mean(numPreferredArtists, na.rm = TRUE)),
+    numOverallArtists = replace_na(numOverallArtists, mean(numOverallArtists, na.rm = TRUE))
+  )
+  
+```
+
+5.
+How many unique AAE words were studied in this dataset?
+Helpful functions: distinct(), count()
+
+In this dataset, there are 64 distinct words that were studied.
+```{r distinct words}
+distinct(hiphop_clean, word)
+
+```
+
+6.
+Make a new variable that re-categorizes ethnic into only two groups, “white” and “non-white”, to simplify your data.
+Helpful functions: mutate(), if_else()
+```{r new ethnicity variable, echo=FALSE}
+hiphop_clean <- hiphop_clean %>% 
+  mutate(hiphop_clean,
+         ethnicity = if_else(ethnic == 'white', 'white', 'non-white'))
+  
+```
+
+7.
+What are the demographics of the people in this study? Investigate the variables sex, age, and ethnic and summarize your findings in 1-3 complete sentences.
+Hint: You’ll need to first manipulate your data to have each person represented only once.
+Helpful functions: select(), distinct(___, .keep_all = TRUE), count(), summary()
+
+In this study there were 117 female identifying participants and 51 male identifying participants. The youngest participant was 16 years old, the oldest participant was 48, and the median age for all of the participants was 19 years of age. The study had 19 Asian participants, 5 African participants, 3 Hispanic participants, 2 Indian participants, 1 biracial participant, 135 white participants, and 3 participants of other ethnicities. 
+
+```{r demographics, echo=FALSE}
+demographics <- distinct(hiphop_clean, subj, .keep_all = TRUE)
+
+select(demographics, sex, age, ethnic) %>%
+  summary()
+ 
+```
+
+8.
+Make at least two plots to display the demographic information of the subjects in this study. You do not need to discuss these plots, but make sure they are appropriate to the data types and have informative titles and axis labels.
+Functions: ggplot(), geom_histogram(), geom_boxplot(), geom_bar(), geom_col(), facet_wrap(), labs()
+
+```{r, eval = FALSE}
+demographics %>% 
+  ggplot(mapping = aes(x = age, y = ethnic, color = ethnic)) + 
+  geom_density_ridges() +
+  facet_wrap(~ sex) +
+  labs(x = "Age of Participant", y = "Ethnicity of Participant") +
+  theme(legend.position = "none")
+  
+
+demographics %>% 
+  ggplot(mapping = aes(x = sex, y = age, color = ethnicity)) +
+  geom_boxplot()
+  
+```
+
+## Familiar words
+For each demographic group listed below, determine which word(s) in this study was(were) the most and least familiar on average.
+
+People below the age of 20
+Non-white women
+White men above the age of 30
+Helpful functions: filter(), arrange(), desc(), slice_max(), slice_min()
+
+## People under age 20
+
+For people under the age of 20, the most familiar word or phrase was "off the hook." The least familiar word or phrase for this group was "catch the vapors."
+
+```{r, eval = FALSE}
+young <- hiphop_clean %>% 
+  filter(age < 20) %>% 
+  group_by(word) %>% 
+  summarize(mean_fam = mean(familiarity)) %>% 
+  arrange(mean_fam, desc(mean_fam))
+  
+```
+
+## Non-White women
+For non-White women, the most familiar word or phrase was "feel me." The least familiar words or phrases for this group were "break someone out", dukey rope", plex",	and	"rollie."
+```{r, eval = FALSE}
+nonwhite_women <- hiphop_clean %>% 
+  filter(sex == "Female", 
+         ethnicity == "non-white") %>% 
+  group_by(word) %>% 
+  summarize(mean_fam = mean(familiarity)) 
+
+nonwhite_women %>% 
+  slice_max(mean_fam)
+
+nonwhite_women %>% 
+  slice_min(mean_fam)
+
+```
+
+## White men over the age of 30
+For White men over the age of 30, the most familiar word or phrase was "5-0." The least familiar words or phrases for this group were "ay yo trip", "beezy",  "break someone out", "catch the vapors", "crossroads", "crump", "dap", "dollar cab", "domino", "duckets", "face gator", "fetti", "finna", "ghostride", "good hair", "grip grain", "guap", "humming", "mail", "plex", "rollie", "saditty", "sweatbox", "trill", and "twurk."
+
+```{r, eval = FALSE}
+hiphop_clean %>% 
+  filter(ethnic == "white", sex == 'Male', age > 30) %>% 
+  group_by(word) %>% 
+  summarize(mean_fam = mean(familiarity)) %>% 
+  arrange(mean_fam, desc(mean_fam))
+
+```
+## Justin Beiber
+I think that p17 is Justin Bieber. P17 has the highest Bieber score of all of the study participants who matched his demographic features at the time. P17 got a  score of 5 out of 6. It is a little strange that he got as core of 5 out of 6 but Justin Bieber did some very questionable things during this time in his life; it is not extremely suprising that he would fail to name 5 of his own songs correctly. 
+
+```{r, eval = FALSE}
+demographics %>% 
+  filter(
+    ethnic == "white", 
+    sex == 'Male', 
+    age > 17, 
+    age < 23, 
+    city > 10000, 
+    city < 60000) %>% 
+  group_by(bieber) %>%
+  select(subj, bieber) %>% 
+  arrange(desc(bieber))
+  
+```

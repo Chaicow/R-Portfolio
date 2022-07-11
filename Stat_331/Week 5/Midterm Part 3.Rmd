@@ -1,0 +1,19 @@
+---
+title: "Midterm Part 3"
+author: "Chau Nguyen"
+date: "2/9/2022"
+output: 
+  html_document:
+    code_folding: hide
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(here)
+library(ggridges)
+
+Wages <- read_csv(here::here("Midterm","Minimum Wage Data.csv"))
+```
+
+

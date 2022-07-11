@@ -1,0 +1,110 @@
+---
+title: "Lab 1"
+author: "Chau Nguyen"
+output:
+  prettydoc::html_pretty:
+    theme: hpstr
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, 
+                      fig.align = "center", 
+                      message = FALSE)
+```
+
+<style>
+div.pink { background-color:#fde6ff; border-radius: 5px; padding: 20px;}
+</style>
+<div class = "pink">
+
+For the challenge assignment, I highlighted all of the text.
+
+I learned how to produce the highlighting code from the guide: https://holtzy.github.io/Pimp-my-rmd/#highlight_a_piece_of_text 
+
+</div>
+
+## R Markdown
+
+<style>
+div.pink { background-color:#fde6ff; border-radius: 5px; padding: 20px;}
+</style>
+<div class = "pink">
+
+This dataset contains information about the speed of cars and the distances taken to stop. The data were recorded in 1920 so the data are roughly 102 years old. It has 50 rows and 2 variables.
+
+</div>
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+<style>
+div.pink { background-color:#fde6ff; border-radius: 5px; padding: 20px;}
+</style>
+<div class = "pink">
+
+This plot shows the relationship between temperature measured in Celsius and pressure of mercury measured in millimeters. 
+
+</div>
+
+```{r pressure, echo=FALSE}
+plot(pressure, 
+     xlab = "Pressure in mm", 
+     ylab = "Temperature in C",)
+```
+
+<style>
+div.pink { background-color:#fde6ff; border-radius: 5px; padding: 20px;}
+</style>
+<div class = "pink">
+
+In this section, I extracted the distance column from the cars dataset and saved it into a new object called "dist".
+
+</div>
+
+```{r}
+dist <- cars$dist
+```
+
+<style>
+div.pink { background-color:#fde6ff; border-radius: 5px; padding: 20px;}
+</style>
+<div class = "pink">
+
+In this section, I created a plot of the distribution of stopping distances contained in the "dist" object that I created above. 
+
+</div>
+
+```{r}
+hist(dist, 
+     main = "Histogram of Stopping Distances",
+     xlab = "Stopping Distance in ft.")
+
+```
+
+<style>
+div.pink { background-color:#fde6ff; border-radius: 5px; padding: 20px;}
+</style>
+<div class = "pink">
+
+In this section, I created a plot of the relationship between stopping distance and speed. 
+
+</div>
+
+```{r}
+plot(cars, 
+     main = "Speed vs. Stopping Distances",
+     xlab = "Speed in mph", 
+     ylab = "Stopping Distance in ft.")
+```
+
+<style>
+div.pink { background-color:#fde6ff; border-radius: 5px; padding: 20px;}
+</style>
+<div class = "pink">
+
+In terms of plot improvements, I wish that the points that are stacked on top of each other were more visible or separated from each other just a little bit. I can see that there are some points that are stacked on top of each other in the plots above but I don't know how many there are. I would also improve how the points on the scatterplot look. I personally really dislike empty dots. I wish there was a way to make the dots filled instead of empty. 
+
+</div>

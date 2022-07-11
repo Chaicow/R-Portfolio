@@ -1,0 +1,127 @@
+---
+title: "Lab 7"
+author: "Chau Nguyen"
+date: "2/16/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+
+fish <- read_csv(here::here("Week 7","BlackfootFish.csv"))
+```
+
+## Summarizing Missing Data
+Weight is the only variable that has missing values. Additionally, there are 1796 observations that have missing values.
+
+```{r missing data, echo = FALSE}
+find_na <- function(x){
+  sum(is.na(x))
+}
+
+fish %>% 
+  summarize(across(trip:species,  
+                  ~ find_na(.x)))
+```
+
+# Task 2 – Visualizing Missing Data
+
+Unfortunately, these missing values are not for only one year, trip, or section of river.
+
+Create a thoughtful visualization exploring the frequency of missing values across the different years, sections, and trips.
+
+```{r plot na, echo=FALSE}
+fish_na <- fish %>% 
+  group_by(year, section, trip) %>%
+  summarize(missing = sum(find_na(weight)))
+
+fish_na %>% 
+  ggplot(mapping = aes(x = year, 
+                       y = missing, 
+                       fill = section)) +
+  geom_col() +
+  facet_wrap(~trip) +
+  labs(y = "Missing Values", x = "Year") +
+  theme(axis.text.x = element_text(size = 7), 
+        axis.text.y =)
+  
+```
+
+#Task 1 – Writing a Function
+Let’s transform the repeated process above into a rescale_01() function.
+
+The function should take a single vector as its input.
+The function should return the rescaled vector.
+Think about the “efficiency” of your function. Are you calling the same function multiple times?
+```{r new rescale function}
+rescale_01 <- function(x){
+  rng <- range(x, na.rm = TRUE)
+  (x - rng[1]) / (rng[2] - rng[1])
+}
+  
+```
+
+Task 3 - Performing a Simple Test
+First, test your function on a simple vector. Verify that the maximum of your rescaled vector is 1 and the minimum is 0!
+
+```{r Task 3, echo=FALSE}
+
+x <- c(1:25, NA)
+
+rescale_01(x)
+```
+Task 4 - Performing a More Difficult Test
+Next, let’s test the function on the length column of the BlackfootFish dataset.
+
+Make side-by-side plots of the original values of length and the rescaled values of length.
+Hint: The gridExtra package has a grid.arrange() function that allows for you to arrange multiple ggplot() objects into rows and columns. Or, you can play around with the fig.show and out.width options of your code chunk (https://bookdown.org/yihui/rmarkdown-cookbook/figures-side.html).
+
+```{r task 4, echo=FALSE, fig.show="hold", out.width="50%"}
+fish_length <- fish %>% 
+  pull(length)
+
+rescaled_length <- rescale_01(fish_length)
+
+fish$length_rescaled <- rescaled_length
+
+fish %>% 
+  ggplot(mapping = aes(x = year, 
+                       y = length_rescaled))+
+  geom_violin() +
+  labs(x = "Year", y = "Rescaled Length of Fish")
+
+fish %>% 
+  ggplot(mapping = aes(x = year, 
+                       y = length)) +
+  geom_violin() +
+  labs(x = "Year", y = "Length of Fish")
+
+```
+Task 5 – Incorportaing Variables
+Suppose you would for your rescale() function to perform operations on a variable within a dataset. Ideally, your function would take a dataframe and a variable name as inputs and return a dataframe where the variable has been rescaled.
+
+Create a rescale_column() that accepts two arguments, (1) a dataframe, and (2) the name(s) of the variable(s) to be rescaled. The body of the function should call the original rescale_01() function you wrote previously.
+
+```{r Task 5, echo=FALSE}
+rescale_column <- function(dataframe, vars){
+  stopifnot(is.data.frame(dataframe))
+
+dataframe %>% 
+  mutate(
+    across(.cols = {{vars}},
+           .fns = rescale_01))
+}
+```
+
+Task 6 – Another Function Test
+Alright, now let’s put your rescale_column() function to work! Use your rescale_column() function to rescale both the length and weight columns.
+
+I expect that you only call the rescale() function one time!
+```{r Task 6, echo=FALSE}
+fish %>% 
+  rescale_column(length:weight)
+
+```
+```
+

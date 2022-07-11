@@ -1,0 +1,52 @@
+---
+title: "Practice Activity 9"
+author: "Chau Nguyen"
+date: "3/1/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(palmerpenguins)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure}
+
+penguin_lm <- penguins %>% 
+  lm(bill_length_mm ~ bill_depth_mm, data  = .)
+penguin_predict <- predict(penguin_lm)
+penguin_sigma <- sigma(penguin_lm)
+
+nsims <- 100
+
+sims <- map_dfc(1:nsims,
+                ~ tibble(sim = noise(penguin_predict, sd = penguin_sigma)
+                        )
+                )
+
+colnames(sims) <- colnames(sims) %>% 
+  str_replace(pattern = "\\.\\.\\.",
+                  replace = "_")
+
+sims <- penguins %>% 
+  filter(!is.na(bill_depth_mm), 
+         !is.na(bill_length_mm), 
+         !is.na(species)) %>% 
+  select(bill_length_mm) %>% 
+  bind_cols(sims)
+
+sims %>% 
+  map(~lm(bill_length_mm ~ .x, data = sims))
+
+sims %>% 
+  map(~lm(bill_length_mm ~ .x, data = sims)) %>% 
+  map(glance)
+
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

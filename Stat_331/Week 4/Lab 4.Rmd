@@ -1,0 +1,178 @@
+---
+title: "Lab 4"
+name: "Chau Nguyen, Amrit Pradhan, Lamitr Dhir, Vishaal Guru"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(here)
+
+avocado <- read_csv(here::here("Week 4","avocado.csv"))
+
+```
+
+
+#Introduction and Set-Up 
+
+#Summary
+
+```{r avocado data, echo=FALSE}
+glimpse(avocado)
+```
+
+#Describe the Dataset
+There are 6083 rows and 14 columns in this dataset, representing information on avocados in different regions for every week from 1/4/2015-3/25/18. This information includes average prices, number of different sizes of avocados sold, and number of different types of bags sold. The data were collected in 2018 through retailers' cash registers based on sales of Hass avocados.
+
+
+#Clean the Dataset: Major Regions
+```{r avocado major region, echo=FALSE}
+
+major_regions <- tibble(region = c('GreatLakes', 'Southeast', 'West',
+                                'Northeast','Midsouth', 'Plains', 
+                                'SouthCentral'))
+major_regions <- avocado %>% 
+  semi_join(major_regions)
+  
+```
+
+#Clean the Dataset: Cities
+```{r avocado cities, echo=FALSE}
+
+cities <- tibble(region =
+                c('GreatLakes', 'Southeast', 'West',      
+                  'Northeast','Midsouth','Plains','SouthCentral',
+                  'WestTexNewMexico','NorthernNewEngland','NewYork', 
+                  'California', 'SouthCarolina', 'TotalUS'))
+
+cities <- avocado %>% 
+  anti_join(cities)
+
+
+  
+```
+
+
+#Clean the Dataset: minor_regions
+```{r avocado minor regions, echo=FALSE}
+minor_regions <- tibble(region = c('WestTexNewMexico', 
+                                   'NorthernNewEngland', 'NewYork',
+                                   'California', 'SouthCarolina'))
+minor_regions <- avocado %>% 
+  semi_join(minor_regions)
+```
+
+#Clean the Dataset: Total US
+```{r avocado total us, echo=FALSE}
+total_us <- tibble(region = c('TotalUS'))
+
+total_us <- avocado %>% 
+  anti_join(total_us) 
+
+```
+
+#1. Which major region sold the most organic, small Hass avocados in 2017?
+West is the major region that sold the most Haas Avocados. 
+```{r avocado major regions small avocado, echo=FALSE}
+#4046 = small; 4225 = large; 4770 = extra large 
+avocados_small <- major_regions %>%
+  filter(
+    year == "2017",
+    type == "organic") %>% 
+  group_by(region) %>% 
+  summarize(sum_total = sum(`4046`))
+avocados_small %>% 
+  slice_max(sum_total)
+
+```
+
+#2. Use the separate() function to split the Date variable into year, month, and day. In which month is the highest volume of avocado sales?
+January is the month with the highest volume of avocado sales. 
+```{r avocado highest volume, echo=FALSE}
+avocado %>% 
+  separate(Date, into = c("Month", "Day", "Year"), sep = "/") %>% 
+  group_by(Month) %>% 
+  summarize(sum_month = sum(`Total Volume`)) %>% 
+  slice_max('sum_month')
+
+```
+#3. Which metro area regions sold the most total avocados? Plot side-by-side boxplots of total volume for only the five regions with the highest averages for the Total Volume variable.
+Los Angeles, PhoenixTucson, DallasFtWorth, Houston, and Baltimore Washington are the metro regions that sold the more total avocados.
+```{r avocado metro regions, echo=FALSE}
+total_avocados_metro <- cities
+
+total_avocados_metro %>% 
+  group_by(region) %>% 
+  summarize(sum_total_city = sum(`Total Volume`)) %>% 
+  slice_max(sum_total_city, n = 5) 
+
+total_avocados_metro %>% 
+  filter(region %in% c("LosAngeles", "PhoenixTucson", 
+                       "DallasFtWorth","Houston", 
+                       "BaltimoreWashington" )) %>%
+  ggplot(aes(x = `Total Volume`, y = region)) + 
+  geom_boxplot() +
+  labs(x = "Total Volume of Avocados Sold", y = "Metropolitan Areas")
+
+##I learned how to use this filter function from this website under the challenge section: https://datacarpentry.org/dc_zurich/R-ecology/05-visualisation-ggplot2
+```
+
+#Reshaping
+
+#1.In which regions is the price of organic versus conventional avocados most different? Support your answer with a few summary statistics and a visualization.
+The region in California with the largest mean price difference between organic and conventional avocados is San Francisco.
+
+```{r avocado california types, echo=FALSE}
+CA_avocado <- cities %>% 
+  filter(region %in% c("LosAngeles", "SanDiego", 
+                       "Sacramento","SanFrancisco"))
+
+CA_avocado %>%
+  group_by(region, type) %>% 
+  summarize(avg_price = mean(AveragePrice)) %>% 
+  pivot_wider(names_from = type,
+              values_from = avg_price) %>% 
+  mutate(difference = organic - conventional)
+CA_avocado %>%
+  group_by(region, type) %>% 
+  summarize(median(AveragePrice))
+
+cities %>% 
+  filter(region %in% c("LosAngeles", "SanDiego", 
+                       "Sacramento","SanFrancisco")) %>% 
+  ggplot(aes(x = AveragePrice, y = region)) + 
+    geom_boxplot() +
+    facet_wrap(~ type) +
+    labs(x = "Average Price of Avocados by Type", y = "Region of 
+         California")
+  
+```
+#2. The following plot shows, for all four California regions, the proportion of the mean Hass avocado sales that are small, large, or extra large; conventional vs. organic. Recreate the plot.
+
+```{r avocado props, echo=FALSE}
+CA_avocado_proportions <- cities %>% 
+  rename(ExtraLarge = `4770`, Large = `4225`, Small = `4046`) %>%
+  filter(region %in% c("LosAngeles", "SanDiego", 
+                       "Sacramento","SanFrancisco"))
+
+Avocado_proportions <- CA_avocado_proportions %>% 
+  pivot_longer(Small:ExtraLarge, 
+               names_to = "Size", 
+               values_to = "AvocadoSold") %>% 
+  na_if("AvocadoSold" == 0) %>% 
+   mutate(Size = factor(Size, c("Small", "Large", "ExtraLarge")))
+         
+ Avocado_proportions %>% 
+  ggplot(mapping = aes(x = region, y = AvocadoSold, fill = Size)) +
+  geom_col(position = "fill") +
+  theme(axis.text.x = element_text(size = 5), axis.text.y = 
+        element_text(size=)) +
+  facet_wrap(~ type) +
+  labs(x = "Region of California", y = "Proportion of Avocados Sold 
+       by Type")
+ 
+ ##I got axis.text.x from a classmate on discord
+```
+
+

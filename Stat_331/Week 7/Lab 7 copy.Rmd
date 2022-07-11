@@ -1,0 +1,46 @@
+---
+title: "Lab 7"
+author: "Chau Nguyen"
+date: "2/16/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+
+fish <- read_csv(here::here("Week 7","BlackfootFish.csv"))
+```
+
+Challenge
+
+```{r}
+condition_index <- function(x, y) {
+  stopifnot(is.numeric(x) | is.numeric(y))
+ (x/y^3)*100
+}
+
+```
+
+```{r}
+weight_fish <- fish$weight
+length_fish <- fish$length
+
+condition <- condition_index(weight_fish, length_fish)
+
+fish$condition <- condition
+
+fish %>% 
+  ggplot(mapping = aes(x = year, 
+                       y = condition, fill = 
+                         section)) +
+  geom_col() +
+  facet_wrap(~section) +
+  labs(x = "Year", y = 
+         "Condition of Fish") +
+  theme(legend.position = "none")
+
+
+```
+
+

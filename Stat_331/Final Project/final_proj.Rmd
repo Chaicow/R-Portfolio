@@ -1,0 +1,405 @@
+---
+title: "Final Project"
+author: "Amrit Pradhan, Chau Nguyen, Ken Xie"
+date: "3/2/2022"
+output:
+  prettydoc::html_pretty:
+    theme: cayman
+    highlight: github
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, 
+                      warning = FALSE,
+                      messages =  FALSE)
+
+library(tidyverse)
+library(DT)
+library(kableExtra)
+library(gridExtra)
+library(broom)
+library(gganimate)
+library(gifski)
+```
+
+## Introduction
+__Motivation__
+
+For our final project, we wanted to explore the relationship between the percentage of non-internet users in a country and the mean number of years that women aged 15-24 in those countries spend in education. We wanted to evaluate this relationship because we wanted to know if internet usage in a country could predict how many years young women in those countries spent in school. We felt that if the percentage of non-internet users went down, the number of years that women aged 15-24 would spend in school would also increase. This is because internet access makes educational information more accessible. We decided to evaluate women's education instead of men's education because we felt that the years that young women spend in their country's education system vary widely by country. This is because some countries value female education more than others. We wanted to see if the internet plays a role in increasing the number of years women spend in school even in countries that seem to not care as much about women's education.
+
+__The Data__
+
+The data that we used in our project came from gapminder, a website with different types of sociological datasets. Our data were originally two separate datasets. The first was called "Percentage of people not using the internet", which included data about the percentage of non-internet users in the population in 196 countries from the years 1989 through 2018. Additionally, the percentage of non-internet users was calculated by the proportion of people who did not use the internet in the past 3 months. 
+The second dataset that we used was called "Mean years in school (women 15-24)". This dataset includes data from 188 countries about the mean number of years women ages 15-24 spent in primary, secondary, and post-secondary education from the years 1969-2014.
+For our project, we combined the two datasets, which had data from 188 countries across the years of 1989-2014. However, in our project, we decided to exclude every year before 2000. We did this because when we looked at our dataset, we noticed that before 2000, most countries had no internet users; the percentage of non-internet users in their populations was near or at 100%. Since we wanted to evaluate the effect of internet usage on the number of years that young women spent in school, we thought that it would be more accurate to test this during years when most countries had at least some access to the internet. Thus, for our project, we only evaluated the data from the years 2000-2014. Also, the years in the merged dataset only go up to 2014 because the education dataset does not have data past 2014.
+
+<!-- The Data -->
+
+```{r, include = FALSE}
+non_internet <- read_csv(here::here("Final", "non_net_users_prc.csv"))
+
+women_edu <- read_csv(here::here("Final", "mean_years_in_school_women_15_to_24_years.csv"))
+```
+
+<!-- Data Cleaning -->
+<!-- Pivoting Longer -->
+```{r, clean data, include = FALSE}
+non_internet_clean <- non_internet %>%
+  pivot_longer(cols = `1989`:`2018`, 
+               names_to = "year", 
+               values_to = "% non internet users")
+
+women_edu_clean <- women_edu %>%
+  pivot_longer(cols = `1969`:`2014`,
+               names_to = "year",
+               values_to = "mean edu years")
+```
+
+<!-- Data Cleaning + Joining Datasets -->
+```{r, include = FALSE}
+internet_edu <- full_join(women_edu_clean,
+                          non_internet_clean, 
+                          by = c("country","year")
+                          )
+
+internet_edu <- internet_edu %>%
+  filter(year > 1999 & year < 2015) %>%
+  mutate(decade = case_when(year %in% 1980:1989 ~ "1980s",
+                            year %in% 1990:1999 ~ "1990s",
+                            year %in% 2000:2009 ~ "2000s",
+                            year %in% 2010:2019 ~ "2010s"),
+         year = as.numeric(year))
+```
+
+## Preview
+
+Here is a preview of our cleaned dataset.
+
+```{r, echo = FALSE}
+datatable(head(internet_edu, 10), class = "cell-border stripe")
+```
+
+## Association of Percent of Non Internet Users and Mean Education Years for Women Ages 15-24
+<!-- Data Visualization -->
+
+<!-- Create two visualizations exploring the following: -->
+
+__Relationship__
+
+Let us first look at the relationship between the two quantitative variables we are investigating. In this case, the Percent of Non Internet Users and the Mean Education Years for Women ages 15-24.
+It seems like there is a negative, medium, and somewhat linear association between the Percent of Non Internet Users in the World and Mean Education Years for Women Ages 15-24, but this relationship becomes less clear as the Percent of Non Internet Users get closer to 100%. One could argue that this is true once the Percent of Non Internet Users is 85% or greater, but especially at 100%, since values there of Mean Education Years for Women Ages 15-24 essentially vary from 0 to 15 years (the entire spectrum).
+We also created a separate variable called decade to observe the association of our two quantitative variables within decades. From what we see, the 2000s and 2010s seem to have a similar association of being negative, medium, and somewhat linear. However, once again, it becomes less clear after the Percent of Non Internet Users is at 85% and above.
+We included the decades instead of years as a color since it is more comprehensible. If we colored by year, there would be 15 colors, which would be too overwhelming to interpret.
+It is important to keep in mind that our association does seem to be decent, since the values of 85% and above may dilute the strength of association of these two variables.
+
+```{r, echo = FALSE, message = FALSE}
+uta
+
+internet_edu %>% 
+  ggplot(mapping = aes(x = `% non internet users`, y = `mean edu years`, color = decade)) +
+  geom_point() +
+  scale_color_manual(values = cdPalette_accessible) +
+  stat_smooth(method = "lm") +
+  scale_x_continuous(labels = function(x) paste0(x, "%")) +
+  theme(legend.position = "top", text = element_text(family = "serif")) +
+  labs(x = "Percent of Non Internet Users", y = "Mean Years in Education for Women Ages 15-24")
+```
+
+<!-- Keep in mind your response should be on the y-axis and your explanatory variable should be on the x-axis. -->
+
+__Relationship Over Time__
+
+Next, let us look at how the relationship between Percent of Non Internet Users and Mean Education Years for Women Ages 15-24 has changed over time.
+To do this, we essentially have the same plot as above, but instead made the colors change by year gradually per frame so that it wouldn't be overwhelming to have 15 colors in a frame all at once.
+The color follows a blue color gradient that gets lighter as the years increase.
+The dotted tails of each point are indicators of the previous values of that point/country. 
+We did not incorporate countries to this animation since there were 188 distinct countries, and having all of this information would over flood our visualization with colors, annotations, or a legend with a list of all the countries that take up the entire visualization.
+
+*Now to interpret what we see:*
+It seems the Mean Education Years have increased over time for most countries even for the ones at the very bottom right with very small movement.
+It does look like the Percent of Non Internet Users have decreased over time (same as Percent of Internet Users increasing), and as that happens, the Mean Education Years for Women Ages 15-24 seemed to increase as well.
+One thing to note is that Internet Usage may not be the only factor that has some effect on the Mean Education Years for Women 15-24 since even when the Percentage of Non Internet Users was at 100% and prior to when there was data on it, Mean Education Years from 1969 still increased regardless of the existence or decrease in Internet Usage.
+
+```{r, echo = FALSE, message = FALSE}
+internet_edu %>%
+  ggplot(mapping = aes(x = `% non internet users`, y = `mean edu years`, color = year)) +
+  geom_point() +
+  labs(y = "Mean Education Years for Women Ages 15-24",
+       x = "Percent of NON Internet Users in the World",
+       title = "Year: {round(frame_time, 0)}") +
+  scale_x_continuous(labels = function(x) paste0(x, "%")) +
+  theme(title = element_text(size = 8, vjust = .9),
+        legend.position = "none") +
+  transition_time(year) +
+  shadow_wake(wake_length = 0.1, alpha = FALSE)
+```
+
+
+## Linear Regression and Residuals
+<!-- Linear Regression -->
+
+```{r, include = FALSE}
+evals_lm <- internet_edu %>% 
+  lm(`mean edu years` ~ `% non internet users`, data = .)
+```
+
+```{r, echo = FALSE}
+evals_lm %>% 
+  augment() %>% 
+  ggplot(mapping = aes(y = .resid, x = .fitted)) +
+  geom_point() + 
+  labs(x = "Fitted", y ="Residual") 
+```
+
+__Residual Interpretation__
+
+As seen in the residual vs fitted plot, the linear model violates the equal variance condition. The residuals exhibit a funnel shaped pattern which indicates that as the variance of y changed as the x value increased. Additionally, there is a slight curve and bunching of data points on the left side evident in the residual vs fitted plot. Because the pattern of the residuals is not random, the linearity condition is violated. Since our linear model violates both the equal variance and linearity conditions, the linear model likely will not explain the relationship between the percentage of non-internet users and the years women aged 15-24 spend in education accurately.
+
+
+__Linear Model Interpretation__
+
+The association between the percentage of non-internet users and the mean years that women aged 15-24 is moderate, negative, and somewhat linear. 
+The response variable \(\hat{y}\) is the Mean Education Years for Women Ages 15-24 and the explanatory variable \(x\) is the Percent of Non Internet Users.
+The equation for the linear regression model is:
+
+\(\hat{y}=15.51-.085x\)
+
+This means that when the percent of non-internet users is 0, the estimated mean years that women aged 15-24 stay in school is 15.51 years. 
+Additionally, when the percentage of non-internet users go up by one percent, the average number of years that women ages 15-24 spend in education decreases by .085 years (~ 1 month).
+
+```{r, echo = FALSE}
+coeff_dt <- broom::tidy(evals_lm)
+
+kable(coeff_dt) %>% 
+  kable_styling(font_size = 15) %>% 
+  row_spec(1, bold = TRUE)
+```
+
+__Model Fit__
+
+```{r, include = FALSE}
+augment(evals_lm) 
+```
+
+
+```{r, echo = FALSE}
+evals_lm_dt <- augment(evals_lm) %>% 
+  summarize(var_y = var(`mean edu years`), 
+                      var_y_hat = var(`.fitted`), 
+                      var_residual = var(`.resid`)
+            )
+
+kable(evals_lm_dt) %>% 
+  kable_styling(font_size = 15) %>% 
+  row_spec(1, bold = TRUE)
+
+# ?get_regression_points
+# augment()
+# get_regression_table()
+# get_regression_summaries()
+```
+
+R^2 tells us the proportion of the variability in the response values that was accounted for by our regression model.
+
+<style>
+div.green { background-color:#097969 border-radius: 5px; padding: 20px;}
+</style>
+<div class = "green">
+
+The equation of R^2 is var(yhat)/var(y) and 0 <= R^2 <= 1.
+
+In this case the R^2 is 5.282988/10.95094 = 0.4824.
+
+</div>
+
+This means our model explains 0.4824 of the variation in mean education years.
+
+Thus the "quality" of our model is decent since it can explain almost half of the variation in the mean education years.
+But keep in mind that our statistical model likely violated the equal variance and linearity assumptions, so take the "quality" of our model with a grain of salt.
+
+## Predict
+<!-- Predict -->
+
+```{r, include = FALSE}
+internet_edu_lm <- internet_edu %>% 
+  lm(`mean edu years` ~ `% non internet users`, data  = .)
+```
+
+```{r, include = FALSE}
+internet_edu_predict <- predict(internet_edu_lm)
+```
+
+```{r, include = FALSE}
+internet_edu_sigma <- sigma(internet_edu_lm)
+```
+
+```{r, include = FALSE}
+noise <- function(x, mean = 0, sd){
+  x + rnorm(length(x), 
+            mean, 
+            sd)
+}
+```
+
+```{r, include = FALSE}
+new_data <- tibble(predict_edu = noise(internet_edu_predict, 
+                                          sd = internet_edu_sigma
+                                          )
+                   )
+```
+
+
+__Histogram: Observed vs Simulated__
+
+The observed and simulated distributions are noticeably different. The observed distribution is somewhat left skewed, with less points in the 4-8 range as compared to the simulated distribution. The values of the observed distribution ranges from 0 to 16 Mean Education Years for Women Ages 15-24. 
+The simulated distribution is shaped approximately normal and centered around 7.5 Mean Education Years for Women Ages 15-24. Its values ranges from 0 to 20 Mean Education Years for Women Ages 15-24.
+
+```{r, echo = FALSE, message = FALSE}
+obs <- internet_edu %>% 
+  ggplot(aes(x = `mean edu years`)) + 
+  geom_histogram() + 
+  labs(x = "Observed Mean Edu Years")
+
+pred <- new_data %>% 
+  ggplot(aes(x = predict_edu)) +
+  geom_histogram() +
+  labs(x = "Simulated Mean Edu Years") + 
+  theme_minimal()
+
+gridExtra::grid.arrange(obs, pred, nrow = 1)
+```
+
+```{r, include = FALSE}
+new_data <- internet_edu %>% 
+  filter(!is.na(`% non internet users`), 
+         !is.na(`mean edu years`)
+         ) %>% 
+  select(country, year, decade, `% non internet users`, `mean edu years`) %>% 
+  bind_cols(new_data)
+```
+
+__Scatterplot: Observed vs Simulated__
+
+Both scatterplots show that as the percentage of non-Internet users goes up, the mean years in school for women age 15-24 decrease. However, the observed scatterplot has much more data points at or around 100%. This seems to create a non-linear relationship while the simulated data has a relatively linear relationship.
+
+```{r, echo = FALSE}
+obs <- internet_edu %>% 
+  ggplot(aes(y = `mean edu years`,
+             x = `% non internet users`)) + 
+  geom_point() + 
+  scale_x_continuous(labels = function(x) paste0(x, "%")) +
+  labs(title = "Observed Data", 
+       x = "Percent of Non Internet Users", 
+       y = "Mean Years in Education for Women Ages 15-24")
+
+
+pred <- new_data %>% 
+  ggplot(aes(y = predict_edu,
+             x = `% non internet users`)) + 
+  geom_point() + 
+  scale_x_continuous(labels = function(x) paste0(x, "%")) +
+   labs(title = "Simulated Data", 
+       x = "Percent of Non Internet Users", 
+       y = "Mean Years in Education for Women Ages 15-24" ) + 
+  theme(legend.position = "none") + 
+  theme_minimal()
+
+gridExtra::grid.arrange(obs, pred, nrow = 1, widths = c(0.55, 0.45))
+```
+
+__Observed vs Simulated Graph with the__ \(y=x\) __Line__
+
+There seems to be some points on the line, but most of the points are not exactly on the line. This graph implies that while some of the simulated data is similar to the observed, most of the simulated data was not close to what was observed.
+
+```{r, echo = FALSE}
+new_data %>% 
+  ggplot(aes(x = `mean edu years`, y = predict_edu)) + 
+  geom_point() + 
+   labs(x = "Observed Mean Edu Years", 
+       y = "Simulated Mean Edu Years" ) + 
+  geom_abline(slope = 1,
+              intercept = 0, 
+              color = "red",
+              linetype = "dashed",
+              lwd = 1.5)
+```
+
+```{r, include = FALSE}
+new_data %>% 
+  lm(`mean edu years` ~ predict_edu, data = .) %>% 
+  glance()
+```
+
+__Description of R^2 between Simulated and Observed__
+
+Approximately 23% of the variability in the observed mean years in school for women ages 15-24 is explained by the simulated mean years in school for women aged 15-24. This value means there is a somewhat weak relationship between the observed and simulated mean years in school for women aged 15-24. This value means that our observed data is not that similar to the simulated data, which can probably explain the differences observed in the histograms and scatterplots above.
+
+```{r, echo = FALSE}
+rsq_dt <- new_data %>% 
+  lm(`mean edu years` ~ predict_edu, data = .) %>% 
+  glance() %>% 
+  select(r.squared) %>% 
+  pull()
+
+kable(rsq_dt) %>% 
+  kable_styling(font_size = 15) %>% 
+  row_spec(1, bold = TRUE)
+```
+
+```{r, include = FALSE}
+nsims <- 1000
+
+sims <- map_dfc(1:nsims,
+                ~ tibble(sim = noise(internet_edu_predict, sd = internet_edu_sigma)
+                        )
+                )
+```
+
+```{r, include = FALSE}
+colnames(sims) <- colnames(sims) %>% 
+  str_replace(pattern = "\\.\\.\\.",
+                  replace = "_")
+```
+
+```{r, include = FALSE}
+sims <- internet_edu %>% 
+  filter(!is.na(`% non internet users`), 
+         !is.na(`mean edu years`), 
+         !is.na(country)) %>% 
+  select(`mean edu years`) %>% 
+  bind_cols(sims)
+```
+
+
+```{r, include = FALSE}
+sim_r_sq <- sims %>% 
+  map(~lm(`mean edu years` ~ .x, data = sims)) %>% 
+  map(glance) %>% 
+  map_dbl(~.$r.squared)
+```
+
+```{r, include = FALSE}
+sim_r_sq <- sim_r_sq[names(sim_r_sq) != "mean edu years"]
+```
+
+__Description of R^2 Histogram__
+
+Simulated datasets have R^2 values between 0.20 and 0.27. This indicates that the data simulated under the statistical model are slightly similar to what was observed. On average, our simulated data account for at most 27% of the variability in the observed mean years in school for women aged 15-24. This is not horrible, but also not that great as not that much variablity is explained by our statistical model.
+
+```{r, echo = FALSE}
+tibble(sims = sim_r_sq) %>% 
+  ggplot(aes(x = sims)) + 
+  geom_histogram(binwidth = 0.01)
+```
+
+## Conclusion
+Overall, our model does not seem to explain our response variable of Mean Years of Education for Women Ages 15-24 very well.
+First, our model likely violates the equal variance and linearity assumptions.
+In addition, the R^2 of our observed vs simulated response value was around 0.20 to 0.27, on a scale from 0 to 1, where models with values closer to 1 are more "accurate."
+From the linear model of the observed dataset, there is an R^2 of 0.48, which means almost half of the variation in mean education years for women ages 15-24 can be explained by that model.
+While we observed a moderate relationship where the Mean Years in Education for Women Ages 15-24 increase as the Percent of Non Internet Users decrease, we cannot make accurate inferences because the model doesn't meet the linear model assumptions and had a relatively low R^2 value for observed vs simulated response values.
+
+## Citation
+% for x-value labels:
+
+https://stackoverflow.com/questions/27433798/how-can-i-change-the-y-axis-figures-into-percentages-in-a-barplot
