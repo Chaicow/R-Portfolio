@@ -1,0 +1,77 @@
+---
+output: github_document
+---
+
+<!-- README.md is generated from README.Rmd. Please edit that file -->
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.path = "man/figures/README-",
+  out.width = "100%",
+  warning = FALSE,
+  message = FALSE
+)
+```
+
+# clust431
+
+<!-- badges: start -->
+<!-- badges: end -->
+
+The goal of clust431 is to use different clustering methods that can be used on datasets to cluster observations.
+
+## Installation
+
+You can install the released version of clust431 from [CRAN](https://CRAN.R-project.org) with:
+
+``` r
+install.packages("clust431")
+```
+
+```{r example}
+library(clust431)
+library(tidyverse)
+```
+
+```{r}
+iris2 <- iris %>%
+    select(-Species)
+```
+
+### em_clust
+
+```{r, warning = FALSE}
+set.seed(175)
+res <- em_clust(iris2, 3)
+
+res$cluster
+
+head(res$probabilities)
+
+res$cluster_means
+
+res$covariances
+
+res$iterations
+```
+
+The output of the __em_clust()__ function is a vector of cluster assignments for each of the observations in the dataframe.
+
+__How accurate were the cluster assignments?__
+
+```{r}
+res2 <- res$cluster
+iris2 <- iris2 %>% 
+    cbind(res2)
+```
+
+```{r}
+ggplot(iris2, aes(x = Sepal.Length, 
+                  y = Petal.Length,
+                  color = as.factor(res2))) + 
+    geom_point()
+```
+
+Looking only at Sepal Length and Petal Length in the iris dataset, we can see that the cluster assignments from the __em_clust()__ function make sense. The observations assigned to cluster 3 have similar Sepal and Petal lengths, and the observations in cluster 1 are all very similar in terms of these two variables.

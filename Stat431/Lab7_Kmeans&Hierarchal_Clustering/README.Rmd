@@ -1,0 +1,133 @@
+---
+output: github_document
+---
+
+<!-- README.md is generated from README.Rmd. Please edit that file -->
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.path = "man/figures/README-",
+  out.width = "100%"
+)
+library(tidyverse)
+```
+
+# clust431
+
+<!-- badges: start -->
+<!-- badges: end -->
+
+The goal of clust431 is to create functions that cluster observations into groups using different clustering methods.
+
+## Installation
+
+You can install the released version of clust431 from [CRAN](https://CRAN.R-project.org) with:
+
+``` r
+install.packages("clust431")
+```
+
+## Example
+
+```{r example}
+library(clust431)
+## basic example code
+```
+
+### k_means Without PCA
+
+The k_means function takes in a dataframe of numeric variables, so we first remove the _Species_ column of the iris dataset. For this example, we will use 3 clusters and not utilize PCA.
+
+```{r}
+#default k-means
+
+iris2 <- iris %>% 
+    select(-Species)
+set.seed(44)
+kmeans(iris2, 3)
+round(kmeans(iris2, 3)$tot.withinss)
+
+```
+```{r}
+#our k_means
+set.seed(44)
+k_means(iris2, 3)
+```
+The output of the k_means function returns the cluster assignment for each of the observations, as well as the total sum of squares. As shown above, our k_means function has the same output as the base kmeans function.
+
+__k_means With PCA__
+
+In this section, we will be comparing the results of our function and the base kmeans function when PCA is implemented. We will be using 2 clusters. 
+
+```{r}
+#base r kmeans
+iris3 <- iris2 %>%
+  princomp()
+
+iris3 <- iris3$scores %>%
+    as.data.frame() %>%
+    select(Comp.2, Comp.1)
+
+set.seed(35)
+round(kmeans(iris3, 2)$tot.withinss)
+kmeans(iris3, 2)
+
+```
+```{r}
+#our k_means
+set.seed(35)
+k_means(iris2, 2, pca = T)
+```
+
+As shown above, our k_means function with PCA automatically implemented has the same output as the base kmeans function that used the first 2 dimensions of the iris3 PCA.
+
+__How well did the cluster assignments work?__
+
+```{r}
+set.seed(40)
+results <- k_means(iris2, k = 3)
+cluster_vector <- results[[1]]
+iris_graph_data <- iris2 %>% 
+    cbind(cluster_vector)
+ggplot(iris_graph_data, aes(x = Petal.Length, 
+                      y = Petal.Width, 
+                      color = as.factor(cluster_vector))) +
+    geom_point()
+```
+
+The cluster assignments are based on all the numeric variables in the iris dataset, however we can still see that the cluster assignments were accurate based on the plot above. The plot above only shows two of the variables used in the cluster assignments, however we still see that the observations were clustered into 3 groups correctly. 
+
+### hier_clust
+
+The function hier_clust() takes a dataframe and a number of clusters to stop at and return the cluster assignments for as arguments.
+
+```{r}
+our_clusters <- hier_clust(mtcars, 2)
+our_clusters
+```
+The output of the function is a vector of cluster assignments.
+
+__Testing the Accuracy of the Clustering__
+
+```{r}
+res <- hclust(dist(mtcars))
+correct_clusters <- cutree(res, 2)
+correct_clusters
+```
+Using the built-in hclust() function, we can see that the cluster assignments returned for 2 clusters for the mtcars dataset are exactly the same.
+
+```{r}
+sum(our_clusters - correct_clusters)
+```
+```{r}
+graph_data <- mtcars %>% 
+    cbind(our_clusters)
+ggplot(graph_data, aes(x = hp, 
+                       y = mpg, 
+                        color = as.factor(our_clusters))) +
+    geom_point()
+```
+
+The cluster assignments are based on all the variables in the mtcars dataset, however we can still see that the cluster assignments were accurate based on these two variables in the plot (hp and mpg). The plot above only shows two of the variables used in the cluster assignments, however we still see that the observations were clustered into 2 groups that are visibly distinct from each other in terms of these 2 variables.
