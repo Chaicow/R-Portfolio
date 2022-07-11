@@ -1,0 +1,150 @@
+---
+title: "Lab 1 part 2"
+author: "Chau Nguyen"
+date: "4/1/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(dplyr)
+library(infer)
+library(lubridate)
+set.seed(1)
+
+
+oscars <- read_csv(here::here("Oscars-demographics-DFE.csv"))
+
+oscars <- oscars %>% 
+  mutate(combined = paste(movie, award)) %>% 
+  distinct(combined, .keep_all = TRUE)
+```
+
+__Most Big 5 Awards__
+14 different movies won the most big 5 awards. They each won 3.
+```{r}
+most_awards <- oscars %>%
+  group_by(movie) %>%
+  distinct(award) %>%
+  count(movie)
+
+most_awards %>%
+  filter(n == max(most_awards$n))
+
+```
+
+
+__Most Common First Name__
+
+Helen is the most common first name of Best actress winners.
+```{r}
+oscars %>% 
+  filter(award == "Best Actress") %>%
+  distinct(person) %>%
+  pull(person) %>%
+  str_extract("[:alpha:]+") %>%
+  table() %>%
+  sort(decreasing = TRUE) %>%
+  head(1)
+
+
+```
+
+__Most Oscar Winners__
+New York state is the location of origin that has produced the most Oscar winners. 
+```{r}
+state_country <- oscars %>% 
+  select(birthplace, person) %>%
+  mutate(birthplace = if_else(birthplace == 'New York City', 
+                              'Ny', birthplace)) %>%
+  pull(birthplace) 
+
+state_country <- str_extract(state_country, "[^ ]+$")
+
+state_country <- as.data.frame(state_country) 
+
+state_country  %>% 
+  mutate(state_country = if_else(state_country == 'City', 
+                              'Ny', state_country)) %>%
+  count(state_country) %>% 
+  slice_max(n = 1, n)
+```
+
+
+__Age and Gender__
+
+```{r, error = TRUE}
+oscars_dates <- oscars %>%
+  filter(award != "Best Director") %>%
+  mutate(date_of_show = gsub(" ", "", paste(year_of_award, "-02-01"))) %>% #found how to eliminate whitespace here: https://stackoverflow.com/questions/62000584/r-paste-two-strings-without-space 
+  mutate(
+    Age_At_Winning = case_when(
+      str_detect(date_of_birth,c("-189|-188|-187|-186")) ~ as.numeric(as_date(date_of_show) - as_date(date_of_birth, format = "%d-%B-%Y"))/365.25, 
+      TRUE ~ 100 + as.numeric(as_date(date_of_show) - as_date(date_of_birth, format = "%d-%B-%y"))/365.25)
+         ) %>%
+  mutate(Age_At_Winning = case_when(
+    Age_At_Winning > 100 ~ Age_At_Winning - 100,
+    TRUE ~ Age_At_Winning) #Adjustment made for winners born after the Unix Epoch and after who have their ages inflated by 100 years
+  ) %>%
+  mutate(
+    Gender = case_when(
+      str_detect(award, "Actor") ~ "Male",
+      TRUE ~ "Female"
+    )
+  ) %>%
+  mutate(
+    year_of_award = year_of_award - min(year_of_award) #changing the 
+  ) 
+
+
+model <- lm(Age_At_Winning ~ year_of_award + Gender, data = oscars_dates)
+summary(model)
+  
+
+
+```
+```{r}
+model
+```
+
+Our adjusted r-squared of .124 tells us the correlation is weak but an overall p-value of <.05 tells us our model is statistically significant. Looking at our predictor variables Gender had a p-value<.0001 which tells us their is strong confidence that gender is correlated with age of winner, with it estimating that men on average win big 5 awards ~9.14 years older than women do on average. The p-value of year_of_award was just slightly above the usual cutoff of .05 so we must reject it. If one were to test at a lower level of confidence they could conclude based on the model that with every decade that passes the award winners get on average ~0.55 years older. The intercept value of ~35.77 is what the model views as the expected average age of female winners during the first year the award show was held, 1929, and as it has a p-value<.05 we accept that this interpretation is statistically significant.
+
+__Bootstrapping__
+
+```{r}
+set.seed(1) 
+bootstrap_sample <- oscars %>%
+  mutate(white_not_white = case_when(
+    race_ethnicity == "White" ~ "White",
+    TRUE ~ "Not White"
+  )) %>%
+  specify(response = white_not_white, success = "White") %>%
+  generate(reps = 10000, type= "bootstrap") %>%
+  group_by(white_not_white, replicate) %>%
+  summarise(cnt = n()) %>%
+  mutate(freq = cnt / 416, 3) %>%
+  filter(white_not_white == "Not White")
+
+```
+
+```{r}
+
+a = quantile(bootstrap_sample$freq, .025)
+b = quantile(bootstrap_sample$freq, .975)
+
+bootstrap_sample %>%
+  ggplot(aes(x = freq)) +
+  geom_histogram(aes(y = ..density..), bins = 30, fill = "grey", color = "black") + 
+  geom_vline(xintercept = a, color = "blue") + 
+  geom_vline(xintercept = b, color = "blue") + 
+  ggtitle("Bootstrapped Plot") + xlab("Proportions")
+
+```
+
+```{r}
+round(quantile(bootstrap_sample$freq, c(.025, .975)),3)
+
+```
+
+Through bootstrapping one can be 95% confident that the true proportion of non-white ‘Big 5’ award-winners is between 4.6% and 9.4%. We elected to include individuals who won multiple awards as multiple observations.
